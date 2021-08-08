@@ -1,4 +1,3 @@
-
 # 전 종목의 일봉 불러와서 DB 저장하기
 # Table1 정상 작동 확인 완료, DB 저장 완료
 
@@ -22,8 +21,7 @@ import sqlite3
 con = sqlite3.connect("c:/Users/rlaek/stocks.db")
 stockitems = pd.read_sql("SELECT * FROM itemName_KOSDAQ", con, index_col = 'index')
 
-column_table2 = ['code', 'section', 'date', 'agg_price', 
-                 'foreigner_limit', 'vol','PER', 'operating_profit', 'converted']
+column_table2 = ['code', 'section', 'date', 'vol', 'agg_price', 'foreigner_limit' ,'PER', 'operating_profit', 'converted']
 
 
 instStockChart = win32com.client.Dispatch("CpSysDib.StockChart")
@@ -64,7 +62,7 @@ for idx, stockitem in stockitems.iterrows():
     instStockChart.SetInputValue(9, ord('1'))
     
     ###
-    instMarketEye.SetInputValue(0, (67, 92, 4, 72)) # PER, 영업이익률,  현재가, 액면가
+    instMarketEye.SetInputValue(0, (67, 92, 4, 72)) # PER, 영업이익률, 현재가, 액면가
     instMarketEye.SetInputValue(1, stockitem['code'])                      
     
     
@@ -83,28 +81,30 @@ for idx, stockitem in stockitems.iterrows():
     
     date = (datetime.datetime.today() - datetime.timedelta(days=1)).strftime("%Y%m%d")
 
-    # GetDataValue 
+    # GetDataValue # 날짜, 거래량, 시가총액, 외국인보유비율 순으로 받음 
     for i in range(numData): # 한 종목에 대한 모든 날짜가 돌아감
         row[0] = stockitem['code'] 
         row[1] = stockitem['section'] # 코스피, 코스닥, ETF 여부 
         row[2] = instStockChart.GetDataValue(0, i) # 날짜 
-        row[3] = instStockChart.GetDataValue(1, i) # 시가총액 
-        row[4] = instStockChart.GetDataValue(2, i) # 외국인한도
-        row[5] = instStockChart.GetDataValue(3, i) # 거래량 : 대박주 계산시 사용할 데이터
-        row[6] = "null"
-        row[7] = "null"
-        row[8] = "null"
+        row[3] = instStockChart.GetDataValue(1, i) # 거래량 : 대박주 계산시 사용할 데이터
+        row[4] = instStockChart.GetDataValue(2, i) # 시가총액
+        row[5] = instStockChart.GetDataValue(3, i) # 외국인보유비율 
+        row[6] = None
+        row[7] = None
+        row[8] = None
 
-        if int(row[2]) == int(date):
+        if int(row[2]) == int(date): #현재가, PER, 액면가, 영업이익률 순으로 받음 
             for i in range(numData_eye):
-                row[6] = instMarketEye.GetDataValue(0, i)  #PER : 대박주 계산시 사용할 데이터
-                row[7] = instMarketEye.GetDataValue(1, i) #영업이익률. 반환한 종목수 넣기
-                cur = instMarketEye.GetDataValue(2, i) #현재가
-                face = instMarketEye.GetDataValue(3, i) #액면가
+                row[6] = instMarketEye.GetDataValue(1, i) #PER : 대박주 계산시 사용할 데이터
+                row[7] = instMarketEye.GetDataValue(3, i) #영업이익률. 반환한 종목수 넣기
+                cur = instMarketEye.GetDataValue(0, i) #현재가
+                face = instMarketEye.GetDataValue(2, i) #액면가
                 if face > 0 :
                     row[8] = (5000 / (face * cur))
         
         rows.append(list(row))
+    if ex >= 400:
+        break
 
 
 print("데이터 로드 완료")
